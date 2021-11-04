@@ -1,6 +1,6 @@
 import React,{Component} from 'react';
 import Web3 from 'web3';
-import {Navbar,Modal,Button} from 'react-bootstrap';
+import {Navbar,Modal,Button,ListGroup,ListGroupItem} from 'react-bootstrap';
 import './App.css';
 import { Form } from 'react-bootstrap';
 import {Container} from 'react-bootstrap';
@@ -125,7 +125,8 @@ class App extends Component {
     productName:'',
     productPrice:'',
     productDescription:'',
-    message:''
+    message:'',
+    products:[]
   }
 
   handleClose(){
@@ -162,12 +163,14 @@ class App extends Component {
   }
 
   handleSell = async(event) => {
-  event.preventDefault();
-  this.setState({message: "waiting on sell transaction status..."});
-  this.handleClose();
-  await this.eBayClone.methods.sellProduct(this.state.productName,this.state.productDescription,this.web3.utils.toWei(this.state.productPrice,'ether')).send({from:this.state.user,gas:500000});
-  await this.refreshContractDetails();
-  this.setState({message:"sell transaction entered"});
+    event.preventDefault();
+    this.setState({message: "waiting on sell transaction status..."});
+    this.handleClose();
+    await this.eBayClone.methods.
+    sellProduct(this.state.productName,this.state.productDescription,this.web3.utils.toWei(this.state.productPrice,'ether')).
+    send({from:this.state.user,gas:500000});
+    await this.refreshContractDetails();
+    this.setState({message:"sell transaction entered"});
   } 
 
   async start() {
@@ -187,11 +190,34 @@ class App extends Component {
     const user = accounts[0];
    // console.log('hey ',user)
     const balance = this.web3.utils.fromWei(await this.web3.eth.getBalance(user),'ether')
+    const productsCount = await this.eBayClone.methods.getNumberOfProducts().call()
+    const products = await Promise.all(
+      Array(parseInt(productsCount))
+      .fill()
+      .map((element,index) => {
+        return this.eBayClone.methods.products(index).call();
+      })
+    );
     this.setState({
       user:user,
-      balance:balance
+      balance:balance,
+      products:products
     })
-  }
+    }
+
+renderProducts(){
+  return this.state.products.map((product,index)=>{
+    var price=this.web3.utils.fromWei(product.price,'ether');
+    return(
+      <ListGroup>
+        <ListGroupItem header={product.name}>Description {product.description}</ListGroupItem>
+        <ListGroupItem>Price (ETH) {price}</ListGroupItem>
+        <ListGroupItem>Sold By {product.seller}</ListGroupItem>
+        <ListGroupItem>Bought by {product.buyer}</ListGroupItem>
+      </ListGroup>
+    );
+  });
+}
 
   componentDidMount(){
     this.refreshContractDetails();
@@ -246,6 +272,7 @@ class App extends Component {
           <Button onClick={this.handleSell}>Sell</Button>
         </Modal.Footer>
       </Modal>
+      {this.renderProducts()}
     </div>
     )
   };
