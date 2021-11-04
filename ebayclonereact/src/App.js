@@ -207,21 +207,46 @@ class App extends Component {
 
 renderProducts(){
   return this.state.products.map((product,index)=>{
-    var price=this.web3.utils.fromWei(product.price,'ether');
-    return(
-      <ListGroup>
-        <ListGroupItem header={product.name}>Description {product.description}</ListGroupItem>
-        <ListGroupItem>Price (ETH) {price}</ListGroupItem>
-        <ListGroupItem>Sold By {product.seller}</ListGroupItem>
-        <ListGroupItem>Bought by {product.buyer}</ListGroupItem>
-      </ListGroup>
-    );
+    if(product.buyer==0x0)
+    {
+      var price=this.web3.utils.fromWei(product.price,'ether');
+      return(
+        <ListGroup>
+          <ListGroupItem header={product.name}>Description {product.description}</ListGroupItem>
+          <ListGroupItem>Price (ETH) {price}</ListGroupItem>
+          <ListGroupItem>Sold By {product.seller}</ListGroupItem>
+          <ListGroupItem>Bought by {product.buyer}</ListGroupItem>
+          <ListGroupItem>
+            <Button bsStyle="primary" onClick={this.handleBuy(product.id,price,product.seller)}>
+              Buy
+              </Button>
+          </ListGroupItem>
+        </ListGroup>
+      );
+    }
   });
 }
 
-  componentDidMount(){
-    this.refreshContractDetails();
+handleBuy = (_productId,_productPrice,_productSeller) => async(event)=>{
+  event.preventDefault();
+  if(_productSeller==this.state.user){
+    this.setState({message:"you cannot buy your own product."});
+    return;
   }
+  this.setState({message:"waiting on buy transaction..."});
+  await this.eBayClone.methods.buyProduct(_productId).send({
+    from:this.state.user.replace,
+    value:this.web3.utils.toWei(_productPrice,'ether'),
+    gas:500000
+  })
+  this.setState({message:"Buy transaction entered"});
+  await this.refreshContractDetails();
+}
+
+componentDidMount(){
+    this.refreshContractDetails();
+}
+
   render() {
     return (
       <div className="App">
